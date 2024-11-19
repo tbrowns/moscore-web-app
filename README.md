@@ -19,6 +19,25 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+[useChat](https://sdk.vercel.ai/docs/reference/ai-sdk-ui/use-chat)
+[useChat/chatbot](https://sdk.vercel.ai/docs/ai-sdk-ui/chatbot)
+[tailwindcss/typography](https://github.com/tailwindlabs/tailwindcss-typography.git)
+
+## Dependecies
+
+```bash
+npm install @clerk/nextjs
+npx shadcn@latest init
+npm install lucide-react
+npm install pdfjs-dist
+npm install -D @tailwindcss/typography
+npm install dotenv
+npm i novel@0.1.22
+npm install zod ai @ai-sdk/openai
+npm install react-markdown
+npm install @supabase/supabase-js
+npm install remark-gfm
+```
 
 ## Learn More
 
