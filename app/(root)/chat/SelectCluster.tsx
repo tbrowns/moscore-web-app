@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState, useEffect } from "react";
 import { Check, ChevronsUpDown, ScrollText } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
@@ -94,15 +92,15 @@ export function SelectCluster() {
   }, [user]);
 
   useEffect(() => {
-    if (selectedClusterId) {
-      localStorage.setItem("selectedClusterId", selectedClusterId);
-    } else {
-      localStorage.removeItem("selectedClusterId");
-    }
+    if (!selectedClusterId) return;
+
+    document.cookie = `selectedClusterId=${selectedClusterId}`;
+
+    localStorage.setItem("selectedClusterId", selectedClusterId);
   }, [selectedClusterId]);
 
   const handleClusterSelect = (clusterId: string) => {
-    setSelectedClusterId(clusterId === selectedClusterId ? "" : clusterId);
+    setSelectedClusterId(clusterId);
   };
 
   if (!user) return null;

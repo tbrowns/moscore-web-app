@@ -9,9 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ToastAction } from "@/components/ui/toast";
-
-import { createResource } from "@/lib/actions/resources";
 
 import { pdfjs } from "react-pdf";
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -53,139 +50,37 @@ export function NewWorkspace({
   const [files, setFiles] = useState<File[]>([]);
   const [fileData, setFileData] = useState<FileObject[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [fileType, setFileType] = useState<"pdf" | "image" | null>(null);
 
   const [units, setUnits] = useState<Map<string, string>>(() => {
     return new Map(unitsProp.map((unit) => [unit.title, unit.id]));
   });
 
-  const createNewUnit = async () => {
-    const { error } = await supabase
-      .from("units")
-      .insert([{ title: unitTitle, user_id: userId }]);
-    if (error) {
-      console.error("Error creating new unit:", error);
-      return;
+  // Supabase RPC Function for Unified Workflow
+  const createUnitClusterResource = async (params: {
+    unitTitle: string;
+    clusterTitle: string;
+    userId: string;
+    fileData: any[];
+  }) => {
+    try {
+      const { data, error } = await supabase.rpc(
+        "create_unit_cluster_resource",
+        {
+          p_unit_title: params.unitTitle,
+          p_cluster_title: params.clusterTitle,
+          p_user_id: params.userId,
+          p_file_data: params.fileData,
+        }
+      );
+
+      if (error) throw error;
+
+      return data;
+    } catch (error) {
+      console.error("Comprehensive creation error:", error);
+      throw error;
     }
-
-    const { data: newUnitData, error: newUnitError } = await supabase
-      .from("units")
-      .select("id")
-      .eq("title", unitTitle)
-      .eq("user_id", userId);
-    if (newUnitError) {
-      console.error("Error fetching unit:", newUnitError);
-      return;
-    }
-
-    const unitId = newUnitData?.[0]?.id;
-    return unitId;
-  };
-
-  const createNewCluster = async (unitId: string) => {
-    const { error } = await supabase
-      .from("clusters")
-      .insert([{ title: clusterTitle, unit_id: unitId }]);
-    if (error) {
-      console.error("Error creating new cluster:", error);
-    }
-
-    const clusterId = getClusterId(unitId);
-    return clusterId;
-  };
-
-  const getClusterId = async (unitId: string) => {
-    const { data: clusterData, error: clusterError } = await supabase
-      .from("clusters")
-      .select("id")
-      .eq("title", clusterTitle)
-      .eq("unit_id", unitId);
-    if (clusterError) {
-      console.error("Error fetching cluster:", clusterError);
-    }
-    const clusterId = clusterData?.[0]?.id;
-
-    return clusterId;
-  };
-
-  const uploadFile = async (clusterId: string) => {
-    if (!files || files.length === 0) return [];
-
-    // Create a copy of fileData to modify
-    const updatedFileData = [...fileData];
-
-    for (const file of files) {
-      try {
-        const dataIndex = updatedFileData.findIndex(
-          (f) => f.name === file.name
-        );
-
-        const fileRef = ref(storage, `example_user/${fileType}s/${file.name}`);
-        const uploadTask = uploadBytesResumable(fileRef, file);
-
-        await new Promise<string>((resolve, reject) => {
-          uploadTask.on(
-            "state_changed",
-            (snapshot) => {
-              const progress =
-                (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-
-              // Update the progress in the copied array
-              if (dataIndex !== -1) {
-                updatedFileData[dataIndex] = {
-                  ...updatedFileData[dataIndex],
-                  downloadProgress: Math.floor(progress),
-                };
-
-                // Update the state to trigger re-render
-                setFileData(updatedFileData);
-              }
-
-              console.log(`Upload is ${progress}% done`);
-            },
-            (error) => {
-              console.error("Upload failed", error);
-            },
-            async () => {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              console.log("File available at", downloadURL);
-
-              const getText = await extractTextFromPDF(file);
-              const { error } = await supabase.from("files").insert([
-                {
-                  cluster_id: clusterId,
-                  name: file.name,
-                  type: file.type,
-                  size: file.size,
-                  content: fileType === "pdf" ? getText : null,
-                  file_url: downloadURL,
-                },
-              ]);
-              if (error) {
-                console.error("Error uploading file:", error);
-              }
-
-              toast({
-                title: "Success.",
-                description: `${file.name} uploaded successfully!`,
-              });
-
-              setUploadProgress(0);
-              resolve(downloadURL);
-            }
-          );
-        });
-      } catch (error) {
-        // ... error handling
-      }
-    }
-
-    setFiles([]);
-    setUnitTitle("");
-    setFileType(null);
-
-    return [];
   };
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
@@ -201,6 +96,44 @@ export function NewWorkspace({
     }
 
     return fullText.trim();
+  };
+
+  const uploadFile = async (fileData: FileObject[]): Promise<any[]> => {
+    const uploadPromises = fileData.map(async (file) => {
+      try {
+        const fileRef = ref(storage, `example_user/${fileType}s/${file.name}`);
+        const fileBlob = await (await fetch(file.content)).blob();
+        const uploadTask = uploadBytesResumable(fileRef, fileBlob);
+
+        return new Promise<any>((resolve, reject) => {
+          uploadTask.on(
+            "state_changed",
+            (snapshot) => {
+              const progress =
+                (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              console.log(`Upload is ${progress}% done`);
+            },
+            (error) => reject(error),
+            async () => {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+
+              resolve({
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                content: file.text,
+                file_url: downloadURL,
+              });
+            }
+          );
+        });
+      } catch (error) {
+        console.error("File upload error", error);
+        throw error;
+      }
+    });
+
+    return Promise.all(uploadPromises);
   };
 
   const handleFileInputChange = async (
@@ -271,8 +204,6 @@ export function NewWorkspace({
       );
       const fileData = await Promise.all(fileDataPromises);
       setFileData(fileData);
-
-      console.log("File data:", fileData);
     } catch (error) {
       console.error("Error reading files:", error);
     } finally {
@@ -281,31 +212,37 @@ export function NewWorkspace({
   };
 
   const handleSubmit = async () => {
-    // Check if user has entered an already existing Unit
-    const isUnitTitleExists = units.has(unitTitle);
+    try {
+      setIsLoading(true);
 
-    // If so get the unit Id, otherwise create new Unit
-    const unitId = isUnitTitleExists
-      ? units.get(unitTitle)
-      : await createNewUnit();
+      // Upload files to Firebase
+      const uploadedFiles = await uploadFile(fileData);
 
-    // Check if the current Unit has the selected cluster
-    let clusterId = await getClusterId(unitId);
+      // Use Supabase RPC to handle unit, cluster, and resource creation
+      const result = await createUnitClusterResource({
+        unitTitle,
+        clusterTitle,
+        userId,
+        fileData: uploadedFiles,
+      });
 
-    // If not create a new cluster under for the unit
-    if (!clusterId) {
-      clusterId = await createNewCluster(unitId);
+      toast({
+        title: "Success",
+        description: "Files uploaded and processed successfully!",
+      });
+
+      // Reset form and close
+      handleCancel();
+    } catch (error) {
+      console.error("Submission error:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to upload and process files.",
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    // uplood file to firebase for storage
-    await uploadFile(clusterId);
-
-    // remove this component from the user's view
-    handleCancel();
-
-    // Create embeddings of the documents and store in supabase
-    const res = await createResource(clusterId);
-    console.log(res);
   };
 
   const handleCancel = () => {
@@ -315,8 +252,9 @@ export function NewWorkspace({
     setUnitTitle("");
   };
 
+  // Rest of the component remains the same...
   return (
-    <div className="absolute  w-fit max-h-40">
+    <div className="absolute w-fit max-h-40">
       <div className="flex flex-col justify-center items-center gap-10 p-6 mt-10 w-full border rounded-md h-full bg-white">
         <div className="grid w-full max-w-sm items-center gap-1.5">
           <Label htmlFor="email">Unit Title</Label>

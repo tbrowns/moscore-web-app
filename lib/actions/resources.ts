@@ -3,27 +3,26 @@
 import { supabase } from "../supabase";
 import { generateEmbeddings } from "../ai/embedding";
 
-export const createResource = async ({ clusterId }: { clusterId: string }) => {
+export const createResource = async (clusterId: string) => {
   try {
-    const { data } = await supabase
+    const { data: fileData, error: fileError } = await supabase
       .from("files")
       .select("*")
       .eq("cluster_id", clusterId);
 
-    data?.forEach(async (file) => {
+    fileData?.forEach(async (file) => {
       const embeddings = await generateEmbeddings(file.content);
-      console.log("embedding successfully generated!!");
 
-      const { error } = await supabase.from("embedding").insert(
-        embeddings.map((embedding) => ({
+      const { error } = await supabase.from("embeddings").insert(
+        embeddings.map((e) => ({
           cluster_id: clusterId,
-          text_chunk: embedding.text_chunks,
-          embedding: embedding.embedding,
+          text_chunk: e.text_chunks,
+          embedding: e.embedding,
         }))
       );
 
       if (error) {
-        console.error("Error inserting embeddings:", error.message);
+        throw new Error("Error inserting embeddings:", error);
       }
     });
 

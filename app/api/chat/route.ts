@@ -1,5 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { streamText } from "ai";
+import { streamText, tool } from "ai";
+import { z } from "zod";
 import { findRelevantContent } from "@/lib/ai/embedding";
 
 const openai = createOpenAI({
@@ -12,15 +13,20 @@ const openai = createOpenAI({
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();
+  const { messages, clusterId } = await req.json();
   const userQuery = messages[messages.length - 1].content;
+  console.log(clusterId);
 
-  const contents = await findRelevantContent(userQuery);
+  const contents = await findRelevantContent(userQuery, clusterId);
+  const systemMessage =
+    contents.length == 0
+      ? ` `
+      : `Answer the question based on the following context:\n\n${contents}`;
 
   const result = await streamText({
     model: openai("hf:mistralai/Mistral-7B-Instruct-v0.3"),
     messages,
-    system: `You are a RAG chabot that answers question based on the following context:\n\n${contents}\n\nQuestion: ${userQuery}`,
+    system: `You are a helpful assistant. ${systemMessage}`,
   });
 
   return result.toDataStreamResponse();

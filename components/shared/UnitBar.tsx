@@ -212,71 +212,23 @@ function RenameUnitDialog({
 function ConfirmDeleteUnitDialog({ unitId }: { unitId: string }) {
   const [open, setOpen] = React.useState(false);
 
-  const deleteUnit = async () => {
-    // Fetch all cluster IDs related to the unit
-    const { data: clusterIds, error: getClusterError } = await supabase
-      .from("clusters")
-      .select("id")
-      .eq("unit_id", unitId);
+  const deleteUnitFunction = async () => {
+    try {
+      // Perform a single transaction to ensure data integrity
+      const { error } = await supabase.rpc("delete_unit_cascade", {
+        p_unit_id: unitId,
+      });
 
-    if (getClusterError) {
-      console.error("Error fetching cluster IDs:", getClusterError.message);
-      throw getClusterError;
-    }
-
-    // Extract cluster IDs into an array
-    const clusterIdArray = clusterIds?.map((cluster) => cluster.id);
-
-    if (!clusterIdArray || clusterIdArray.length === 0) {
-      console.warn("No clusters found for the given unit ID.");
-    } else {
-      // Delete rows from embeddings table
-      const { error: embeddingError } = await supabase
-        .from("embeddings")
-        .delete()
-        .in("cluster_id", clusterIdArray);
-
-      if (embeddingError) {
-        console.error("Error deleting embeddings:", embeddingError.message);
-        throw embeddingError;
+      if (error) {
+        console.error("Error deleting unit and related data:", error.message);
+        throw error;
       }
 
-      // Delete rows from files table
-      const { error: fileError } = await supabase
-        .from("files")
-        .delete()
-        .in("cluster_id", clusterIdArray);
-
-      if (fileError) {
-        console.error("Error deleting files:", fileError.message);
-        throw fileError;
-      }
+      console.log("Unit and all related data successfully deleted.");
+      setOpen(false);
+    } catch (error) {
+      console.error("Unexpected error:", error);
     }
-
-    // Delete rows from clusters table
-    const { error: clusterError } = await supabase
-      .from("clusters")
-      .delete()
-      .eq("unit_id", unitId);
-
-    if (clusterError) {
-      console.error("Error deleting clusters:", clusterError.message);
-      throw clusterError;
-    }
-
-    // Finally, delete the unit
-    const { error: unitError } = await supabase
-      .from("units")
-      .delete()
-      .eq("id", unitId);
-
-    if (unitError) {
-      console.error("Error deleting unit:", unitError.message);
-      throw unitError;
-    }
-
-    console.log("Unit and all related data successfully deleted.");
-    setOpen(false);
   };
 
   return (
@@ -294,7 +246,9 @@ function ConfirmDeleteUnitDialog({ unitId }: { unitId: string }) {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={deleteUnit}>Delete</AlertDialogAction>
+          <AlertDialogAction onClick={deleteUnitFunction}>
+            Delete
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
