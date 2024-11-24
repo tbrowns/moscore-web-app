@@ -1,6 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { streamText, tool } from "ai";
-import { z } from "zod";
+import { streamText } from "ai";
 import { findRelevantContent } from "@/lib/ai/embedding";
 
 const openai = createOpenAI({
