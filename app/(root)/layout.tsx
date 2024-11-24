@@ -2,19 +2,27 @@
 
 import Header from "@/components/shared/Header";
 import Sidebar from "@/components/shared/Sidebar";
-
 import { usePathname, useSearchParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 
-const Layout = ({ children }: { children: React.ReactNode }) => {
-  const [isLoading, setIsLoading] = useState(false);
+// Separate component for parts that use useSearchParams
+const NavigationEvents = ({
+  setIsLoading,
+}: {
+  setIsLoading: (loading: boolean) => void;
+}) => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    // Set loading to false when a new page is loaded
     setIsLoading(false);
-  }, [pathname, searchParams]);
+  }, [pathname, searchParams, setIsLoading]);
+
+  return null;
+};
+
+const Layout = ({ children }: { children: React.ReactNode }) => {
+  const [isLoading, setIsLoading] = useState(false);
 
   return (
     <main>
@@ -26,7 +34,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         <div className="w-full overflow-x-auto">
           <div className="sm:h-[calc(99vh-60px)] overflow-auto">
             <div className="w-full flex justify-center mx-auto overflow-auto h-[calc(100vh-120px)]">
-              <div className="w-full md:max-w-6xl">{children}</div>
+              <div className="w-full md:max-w-6xl">
+                <Suspense fallback={null}>
+                  <NavigationEvents setIsLoading={setIsLoading} />
+                </Suspense>
+                {children}
+              </div>
             </div>
           </div>
         </div>
