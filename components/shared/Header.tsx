@@ -4,6 +4,7 @@ import Image from "next/image";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { AlignLeft } from "lucide-react";
 
+import UserReportButton from "@/components/shared/UserReportButton";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -28,6 +29,8 @@ const Header = () => {
         width={150}
         height={150}
       />
+      <UserReportButton />
+
       <UserButton />
     </header>
   );

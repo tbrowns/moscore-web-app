@@ -294,11 +294,19 @@ export function NewWorkspace({
 
     // If not create a new cluster under for the unit
     if (!clusterId) {
+      console.log("New Unit");
       clusterId = await createNewCluster(unitId);
     }
 
     // uplood file to firebase for storage
     await uploadFile(clusterId);
+    console.log("Cluster ID:", clusterId);
+    // Show success toast
+    toast({
+      title: "Success.",
+      description: "Files uploaded successfully!",
+      action: <ToastAction altText="Undo">Undo</ToastAction>,
+    });
 
     // remove this component from the user's view
     handleCancel();

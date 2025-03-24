@@ -36,10 +36,13 @@ export function ChatSideBar() {
   const params = useParams();
   const page = params.notebook as string;
 
-  const [input, setInput] = useState("");
+  // const [input, setInput] = useState("");
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  // const [isLoading, setIsLoading] = useState(false);
+
+  const [error, setError] = useState<string | null>(null);
+
   const [suggest, setSuggest] = useState<string[]>([
     "Summarize the content of the document",
     "Set questions from the document",
@@ -54,88 +57,104 @@ export function ChatSideBar() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
 
-  const handleSend = async () => {
-    //if (!selectedCluster) return;
-
-    setIsLoading(true);
-    setChatHistory((prev) => [...prev, { role: "user", content: input }]);
-
-    // Add placeholder for assistant message
-    setChatHistory((prev) => [
-      ...prev,
-      {
-        role: "assistant",
-        content: "",
-        isStreaming: true,
+  const { messages, input, handleInputChange, handleSubmit, isLoading, stop } =
+    useChat({
+      onError: (error) => {
+        console.error("Chat error:", error);
+        setError(
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred"
+        );
       },
-    ]);
+      // body: {
+      //   // Default additional data that can be sent with every request
+      //   clusterId: clusterId,
+      // },
+    });
 
-    setInput("");
+  // const handleSend = async () => {
+  //   //if (!selectedCluster) return;
 
-    try {
-      const response = await fetch("/api/semantic-search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userQuery: input,
-          clusterUuid: "",
-        }),
-      });
+  //   setIsLoading(true);
+  //   setChatHistory((prev) => [...prev, { role: "user", content: input }]);
 
-      if (!response.ok) {
-        throw new Error(response.statusText);
-      }
+  //   // Add placeholder for assistant message
+  //   setChatHistory((prev) => [
+  //     ...prev,
+  //     {
+  //       role: "assistant",
+  //       content: "",
+  //       isStreaming: true,
+  //     },
+  //   ]);
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let content = "";
+  //   setInput("");
 
-      if (!reader) return;
+  //   try {
+  //     const response = await fetch("/api/generate", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         userQuery: input,
+  //         clusterUuid: "",
+  //       }),
+  //     });
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+  //     if (!response.ok) {
+  //       throw new Error(response.statusText);
+  //     }
 
-        const text = decoder.decode(value);
-        content += text;
+  //     const reader = response.body?.getReader();
+  //     const decoder = new TextDecoder();
+  //     let content = "";
 
-        // Update the last message in chat history
-        setChatHistory((prev) => {
-          const newHistory = [...prev];
-          const lastMessage = newHistory[newHistory.length - 1];
-          if (lastMessage.role === "assistant") {
-            lastMessage.content = content;
-          }
-          return newHistory;
-        });
-      }
+  //     if (!reader) return;
 
-      // Remove streaming flag when done
-      setChatHistory((prev) => {
-        const newHistory = [...prev];
-        const lastMessage = newHistory[newHistory.length - 1];
-        if (lastMessage.role === "assistant") {
-          lastMessage.isStreaming = false;
-        }
-        return newHistory;
-      });
-    } catch (error) {
-      console.error("Error:", error);
-      setChatHistory((prev) => {
-        const newHistory = [...prev];
-        newHistory.pop(); // Remove the streaming message
-        return [
-          ...newHistory,
-          {
-            role: "assistant",
-            content: "Sorry, an error occurred while processing your request.",
-          },
-        ];
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  //     while (true) {
+  //       const { done, value } = await reader.read();
+  //       if (done) break;
+
+  //       const text = decoder.decode(value);
+  //       content += text;
+
+  //       // Update the last message in chat history
+  //       setChatHistory((prev) => {
+  //         const newHistory = [...prev];
+  //         const lastMessage = newHistory[newHistory.length - 1];
+  //         if (lastMessage.role === "assistant") {
+  //           lastMessage.content = content;
+  //         }
+  //         return newHistory;
+  //       });
+  //     }
+
+  //     // Remove streaming flag when done
+  //     setChatHistory((prev) => {
+  //       const newHistory = [...prev];
+  //       const lastMessage = newHistory[newHistory.length - 1];
+  //       if (lastMessage.role === "assistant") {
+  //         lastMessage.isStreaming = false;
+  //       }
+  //       return newHistory;
+  //     });
+  //   } catch (error) {
+  //     console.error("Error:", error);
+  //     setChatHistory((prev) => {
+  //       const newHistory = [...prev];
+  //       newHistory.pop(); // Remove the streaming message
+  //       return [
+  //         ...newHistory,
+  //         {
+  //           role: "assistant",
+  //           content: "Sorry, an error occurred while processing your request.",
+  //         },
+  //       ];
+  //     });
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   return (
     <Sheet>
@@ -171,7 +190,7 @@ export function ChatSideBar() {
                   <p
                     key={index}
                     className="flex items-center justify-center p-2 border rounded-lg hover:bg-accent min-h-16 cursor-pointer"
-                    onClick={() => setInput(suggestion)}
+                    onClick={() => handleSubmit()}
                   >
                     {suggestion}
                   </p>
@@ -226,15 +245,15 @@ export function ChatSideBar() {
                 value={input}
                 placeholder="Ask me anything..."
                 ref={inputRef}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleInputChange}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !isLoading && input.length >= 2) {
-                    handleSend();
+                  if (e.key === "Enter" && !isLoading) {
+                    handleSubmit();
                   }
                 }}
               />
               <Button
-                onClick={handleSend}
+                onClick={handleSubmit}
                 disabled={isLoading || input.length < 2}
                 className="rounded-md"
               >
