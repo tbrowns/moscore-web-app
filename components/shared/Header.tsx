@@ -17,6 +17,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
+import { ClerkProvider } from "@clerk/nextjs";
+
 const Header = () => {
   return (
     <header className="flex-between h-16 w-full border-b-2 border-border backdrop-blur-sm bg-white/30 p-5">
@@ -29,7 +31,10 @@ const Header = () => {
         width={150}
         height={150}
       />
-      <UserReportButton />
+      <ClerkProvider dynamic>
+        {" "}
+        <UserReportButton />
+      </ClerkProvider>
 
       <UserButton />
     </header>

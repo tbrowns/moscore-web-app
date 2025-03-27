@@ -1,16 +1,15 @@
-// components/UserReportButton.jsx
 "use client";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 export default function UserReportButton() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const router = useRouter();
 
   const { userId } = useAuth();
-
-  console.log("userId:", userId);
 
   const generateReport = async () => {
     if (!userId) {
@@ -109,35 +108,11 @@ export default function UserReportButton() {
         generated: new Date().toISOString(),
       };
 
-      // Send data to API endpoint for PDF generation
-      const response = await fetch("/api/generate-pdf-report", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(report),
-      });
+      // Store report in localStorage for retrieval on the report page
+      localStorage.setItem("userReport", JSON.stringify(report));
 
-      if (!response.ok) {
-        throw new Error("Failed to generate PDF report");
-      }
-
-      // Get the PDF blob from the response
-      const pdfBlob = await response.blob();
-
-      // Download the PDF
-      const url = URL.createObjectURL(pdfBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `user-report-${userId}-${
-        new Date().toISOString().split("T")[0]
-      }.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      console.log("PDF report generated successfully");
+      // Navigate to the report page
+      router.push("/user-report");
     } catch (err) {
       console.error("Error generating report:", err);
       setError(err.message || "Failed to generate report");
