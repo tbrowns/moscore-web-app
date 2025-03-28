@@ -1,50 +1,68 @@
-"use client"
-import { useState } from "react"
-import { supabase } from "@/lib/supabase"
-import { jsPDF } from "jspdf"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CalendarIcon, FileText, Loader2, FileDown } from "lucide-react"
-import { format } from "date-fns"
-import { cn } from "@/lib/utils"
-import { ReportSummary } from "./components/report-summary"
-import { ReportDetails } from "./components/report-details"
-import { ReportSkeleton } from "./components/report-skeleton"
-import { NoData } from "./components/no-data"
-import { ParametricOptions } from "./components/parametric-options"
+"use client";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { jsPDF } from "jspdf";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CalendarIcon, FileText, Loader2, FileDown } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { ReportSummary } from "./components/report-summary";
+import { ReportDetails } from "./components/report-details";
+import { ReportSkeleton } from "./components/report-skeleton";
+import { NoData } from "./components/no-data";
+import { ParametricOptions } from "./components/parametric-options";
+import { useUser } from "@clerk/nextjs";
 
 // Update the UserReport interface to focus on credit data instead of units/clusters
 interface UserReport {
   user: {
-    id: string
-    name: string
-    email: string
-    credit_balance: number
-  }
+    id: string;
+    name: string;
+    email: string;
+    credit_balance: number;
+  };
   summary: {
-    totalCredits: number
-    totalPurchases: number
-    totalConsumption: number
-    averageTransaction: number
-    currentBalance: number
-  }
+    totalCredits: number;
+    totalPurchases: number;
+    totalConsumption: number;
+    averageTransaction: number;
+    currentBalance: number;
+  };
   details: {
-    transactions: any[]
-    purchases: any[]
-    consumption: any[]
-  }
+    transactions: any[];
+    purchases: any[];
+    consumption: any[];
+  };
   dateRange: {
-    from: string
-    to: string
-  }
-  parameters?: Record<string, string>
-  generated: string
+    from: string;
+    to: string;
+  };
+  parameters?: Record<string, string>;
+  generated: string;
 }
 
 // Enum for report types
@@ -55,26 +73,37 @@ enum ReportType {
 }
 
 export default function UserReportsPage() {
-  const [userId, setUserId] = useState("")
-  const [reportType, setReportType] = useState<ReportType>(ReportType.SUMMARY)
+  const [userId, setUserId] = useState("");
+  const [reportType, setReportType] = useState<ReportType>(ReportType.SUMMARY);
   const [dateRange, setDateRange] = useState<{
-    from: Date | undefined
-    to: Date | undefined
+    from: Date | undefined;
+    to: Date | undefined;
   }>({
     from: undefined,
     to: undefined,
-  })
-  const [parameters, setParameters] = useState<Record<string, string>>({})
-  const [report, setReport] = useState<UserReport | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  });
+  const [parameters, setParameters] = useState<Record<string, string>>({});
+  const [report, setReport] = useState<UserReport | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { user } = useUser();
+
+  useEffect(() => {
+    const id: string = user?.id || "";
+    setUserId(id);
+  }, [user]);
 
   // Replace the generateReport function with this credit-focused version
-  const generateReport = async (userId: string, dateFrom?: Date, dateTo?: Date) => {
+  const generateReport = async (
+    userId: string,
+    dateFrom?: Date,
+    dateTo?: Date
+  ) => {
     try {
       // Format date parameters for query
-      const fromDate = dateFrom ? dateFrom.toISOString() : undefined
-      const toDate = dateTo ? dateTo.toISOString() : undefined
+      const fromDate = dateFrom ? dateFrom.toISOString() : undefined;
+      const toDate = dateTo ? dateTo.toISOString() : undefined;
 
       // Modified query to fetch credit-related data
       const query = supabase
@@ -92,54 +121,65 @@ export default function UserReportsPage() {
           description,
           created_at
         )
-      `,
+      `
         )
-        .eq("id", userId)
+        .eq("id", userId);
 
       // Execute the query
-      const { data: userData, error: userError } = await query.single()
+      const { data: userData, error: userError } = await query.single();
 
       // Add more detailed error handling
       if (userError) {
-        console.error("Supabase query error:", userError)
+        console.error("Supabase query error:", userError);
         if (userError.code === "PGRST116") {
-          throw new Error(`No user found with ID: ${userId}`)
+          throw new Error(`No user found with ID: ${userId}`);
         }
-        throw userError
+        throw userError;
       }
 
       // Validate user data
       if (!userData) {
-        throw new Error(`No data returned for user ID: ${userId}`)
+        throw new Error(`No data returned for user ID: ${userId}`);
       }
 
-      console.log("Raw user data from Supabase:", userData)
+      console.log("Raw user data from Supabase:", userData);
 
       // Filter transactions based on date range if provided
-      let filteredTransactions = userData.credit_transactions || []
+      let filteredTransactions = userData.credit_transactions || [];
 
       if (fromDate || toDate) {
         filteredTransactions = filteredTransactions.filter((transaction) => {
-          if (!transaction.created_at) return true // Keep if no date to filter on
-          const transactionDate = new Date(transaction.created_at)
+          if (!transaction.created_at) return true; // Keep if no date to filter on
+          const transactionDate = new Date(transaction.created_at);
           return (
-            (!fromDate || transactionDate >= new Date(fromDate)) && (!toDate || transactionDate <= new Date(toDate))
-          )
-        })
+            (!fromDate || transactionDate >= new Date(fromDate)) &&
+            (!toDate || transactionDate <= new Date(toDate))
+          );
+        });
       }
 
       // Separate transactions by type
-      const purchases = filteredTransactions.filter((t) => t.type === "purchase")
-      const consumption = filteredTransactions.filter((t) => t.type === "consumption")
+      const purchases = filteredTransactions.filter(
+        (t) => t.type === "purchase"
+      );
+      const consumption = filteredTransactions.filter(
+        (t) => t.type === "consumption"
+      );
 
       // Calculate summary metrics
-      const totalPurchases = purchases.reduce((sum, t) => sum + t.amount, 0)
-      const totalConsumption = consumption.reduce((sum, t) => sum + t.amount, 0)
-      const totalTransactions = filteredTransactions.length
+      const totalPurchases = purchases.reduce((sum, t) => sum + t.amount, 0);
+      const totalConsumption = consumption.reduce(
+        (sum, t) => sum + t.amount,
+        0
+      );
+      const totalTransactions = filteredTransactions.length;
       const averageTransaction =
         totalTransactions > 0
-          ? filteredTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0) / totalTransactions
-          : 0
+          ? filteredTransactions.reduce(
+              (sum, t) => sum + Math.abs(t.amount),
+              0
+            ) / totalTransactions
+          : 0;
 
       // Compile report data
       const report = {
@@ -167,20 +207,20 @@ export default function UserReportsPage() {
         },
         parameters: parameters,
         generated: new Date().toISOString(),
-      }
+      };
 
       console.log("Generated credit report data:", {
         user: userData.id,
         transactions: filteredTransactions.length,
         dateRange: { fromDate, toDate },
-      })
+      });
 
-      return report
+      return report;
     } catch (err) {
-      console.error("Error generating credit reports:", err)
-      throw err
+      console.error("Error generating credit reports:", err);
+      throw err;
     }
-  }
+  };
 
   // Update the PDF generation function for credit focus
   const generatePdfReport = (report: UserReport, type: ReportType) => {
@@ -190,245 +230,315 @@ export default function UserReportsPage() {
         orientation: "portrait",
         unit: "mm",
         format: "a4",
-      })
+      });
 
       // Page configuration
-      const pageWidth = 210 // A4 width in mm
-      const leftMargin = 20
-      let currentY = 20 // Starting Y position
+      const pageWidth = 210; // A4 width in mm
+      const leftMargin = 20;
+      let currentY = 20; // Starting Y position
 
       // Helper function to add text with automatic page breaking
-      const addText = (text: string, fontSize = 12, style: "normal" | "bold" = "normal") => {
+      const addText = (
+        text: string,
+        fontSize = 12,
+        style: "normal" | "bold" = "normal"
+      ) => {
         // Set font style
-        doc.setFontSize(fontSize)
-        doc.setFont("helvetica", style)
+        doc.setFontSize(fontSize);
+        doc.setFont("helvetica", style);
 
         // Check if we need a new page
         if (currentY > 280) {
           // Near bottom of page
-          doc.addPage()
-          currentY = 20 // Reset Y position
+          doc.addPage();
+          currentY = 20; // Reset Y position
         }
 
         // Add text
-        doc.text(text, leftMargin, currentY)
+        doc.text(text, leftMargin, currentY);
 
         // Increment Y position based on font size
-        currentY += fontSize * 0.353 // Approximate line height
-      }
+        currentY += fontSize * 0.353; // Approximate line height
+      };
 
       // Helper function to add a section header
       const addSectionHeader = (text: string) => {
-        currentY += 5
-        addText(text, 14, "bold")
-        currentY += 5
-      }
+        currentY += 5;
+        addText(text, 14, "bold");
+        currentY += 5;
+      };
 
       // Helper function to safely format dates
       const formatDateSafe = (dateString: string | undefined | null) => {
-        if (!dateString) return "N/A"
+        if (!dateString) return "N/A";
         try {
-          return format(new Date(dateString), "PPP")
+          return format(new Date(dateString), "PPP");
         } catch (e) {
-          return "Invalid date"
+          return "Invalid date";
         }
-      }
+      };
 
       // Format currency
       const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount)
-      }
+        return new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+        }).format(amount);
+      };
 
       // Title - Different for each report type
       switch (type) {
         case ReportType.SUMMARY:
-          addText("User Credit Summary Report", 18, "bold")
-          break
+          addText("User Credit Summary Report", 18, "bold");
+          break;
         case ReportType.DETAILED:
-          addText("User Credit Detailed Report", 18, "bold")
-          break
+          addText("User Credit Detailed Report", 18, "bold");
+          break;
         case ReportType.PARAMETRIC:
-          addText("User Credit Parametric Report", 18, "bold")
-          break
+          addText("User Credit Parametric Report", 18, "bold");
+          break;
       }
-      currentY += 10 // Extra space after title
+      currentY += 10; // Extra space after title
 
       // User info - Common for all report types
-      addText(`User: ${report.user.name}`, 12, "bold")
-      addText(`Email: ${report.user.email}`)
-      addText(`User ID: ${report.user.id}`)
-      addText(`Current Credit Balance: ${formatCurrency(report.user.credit_balance)}`, 12, "bold")
-      currentY += 5
+      addText(`User: ${report.user.name}`, 12, "bold");
+      addText(`Email: ${report.user.email}`);
+      addText(`User ID: ${report.user.id}`);
+      addText(
+        `Current Credit Balance: ${formatCurrency(report.user.credit_balance)}`,
+        12,
+        "bold"
+      );
+      currentY += 5;
 
       // Date range - Common for all report types
       if (report.dateRange.from || report.dateRange.to) {
-        addText("Date Range:", 12, "bold")
+        addText("Date Range:", 12, "bold");
         if (report.dateRange.from) {
-          addText(`From: ${formatDateSafe(report.dateRange.from)}`)
+          addText(`From: ${formatDateSafe(report.dateRange.from)}`);
         }
         if (report.dateRange.to) {
-          addText(`To: ${formatDateSafe(report.dateRange.to)}`)
+          addText(`To: ${formatDateSafe(report.dateRange.to)}`);
         }
-        currentY += 5
+        currentY += 5;
       }
 
       // Report-specific content
       switch (type) {
         case ReportType.SUMMARY:
           // Summary report - Credit overview
-          addSectionHeader("Credit Summary")
-          addText(`Total Credits Purchased: ${formatCurrency(report.summary.totalCredits)}`)
-          addText(`Number of Purchases: ${report.summary.totalPurchases}`)
-          addText(`Number of Consumption Transactions: ${report.summary.totalConsumption}`)
-          addText(`Average Transaction Amount: ${formatCurrency(report.summary.averageTransaction)}`)
-          addText(`Current Balance: ${formatCurrency(report.summary.currentBalance)}`)
-          break
+          addSectionHeader("Credit Summary");
+          addText(
+            `Total Credits Purchased: ${formatCurrency(
+              report.summary.totalCredits
+            )}`
+          );
+          addText(`Number of Purchases: ${report.summary.totalPurchases}`);
+          addText(
+            `Number of Consumption Transactions: ${report.summary.totalConsumption}`
+          );
+          addText(
+            `Average Transaction Amount: ${formatCurrency(
+              report.summary.averageTransaction
+            )}`
+          );
+          addText(
+            `Current Balance: ${formatCurrency(report.summary.currentBalance)}`
+          );
+          break;
 
         case ReportType.DETAILED:
           // Detailed report - All transactions with details
-          addSectionHeader("Credit Summary")
-          addText(`Total Credits Purchased: ${formatCurrency(report.summary.totalCredits)}`)
-          addText(`Number of Purchases: ${report.summary.totalPurchases}`)
-          addText(`Number of Consumption Transactions: ${report.summary.totalConsumption}`)
-          addText(`Current Balance: ${formatCurrency(report.summary.currentBalance)}`)
-          currentY += 10
+          addSectionHeader("Credit Summary");
+          addText(
+            `Total Credits Purchased: ${formatCurrency(
+              report.summary.totalCredits
+            )}`
+          );
+          addText(`Number of Purchases: ${report.summary.totalPurchases}`);
+          addText(
+            `Number of Consumption Transactions: ${report.summary.totalConsumption}`
+          );
+          addText(
+            `Current Balance: ${formatCurrency(report.summary.currentBalance)}`
+          );
+          currentY += 10;
 
           // Credit Purchase Transactions
           if (report.details.purchases.length > 0) {
-            addSectionHeader("Credit Purchases")
+            addSectionHeader("Credit Purchases");
             report.details.purchases.forEach((transaction, index) => {
-              addText(`${index + 1}. Amount: ${formatCurrency(transaction.amount)}`, 11, "bold")
-              addText(`   Date: ${formatDateSafe(transaction.created_at)}`, 10)
+              addText(
+                `${index + 1}. Amount: ${formatCurrency(transaction.amount)}`,
+                11,
+                "bold"
+              );
+              addText(`   Date: ${formatDateSafe(transaction.created_at)}`, 10);
               if (transaction.description) {
-                addText(`   Description: ${transaction.description}`, 10)
+                addText(`   Description: ${transaction.description}`, 10);
               }
-              currentY += 2
-            })
+              currentY += 2;
+            });
           }
 
           // Credit Consumption Transactions
           if (report.details.consumption.length > 0) {
-            addSectionHeader("Credit Consumption")
+            addSectionHeader("Credit Consumption");
             report.details.consumption.forEach((transaction, index) => {
-              addText(`${index + 1}. Amount: ${formatCurrency(transaction.amount)}`, 11, "bold")
-              addText(`   Date: ${formatDateSafe(transaction.created_at)}`, 10)
+              addText(
+                `${index + 1}. Amount: ${formatCurrency(transaction.amount)}`,
+                11,
+                "bold"
+              );
+              addText(`   Date: ${formatDateSafe(transaction.created_at)}`, 10);
               if (transaction.description) {
-                addText(`   Description: ${transaction.description}`, 10)
+                addText(`   Description: ${transaction.description}`, 10);
               }
-              currentY += 2
-            })
+              currentY += 2;
+            });
           }
-          break
+          break;
 
         case ReportType.PARAMETRIC:
           // Parametric report - Credit summary plus custom parameters
-          addSectionHeader("Credit Summary")
-          addText(`Total Credits Purchased: ${formatCurrency(report.summary.totalCredits)}`)
-          addText(`Number of Purchases: ${report.summary.totalPurchases}`)
-          addText(`Number of Consumption Transactions: ${report.summary.totalConsumption}`)
-          addText(`Current Balance: ${formatCurrency(report.summary.currentBalance)}`)
-          currentY += 10
+          addSectionHeader("Credit Summary");
+          addText(
+            `Total Credits Purchased: ${formatCurrency(
+              report.summary.totalCredits
+            )}`
+          );
+          addText(`Number of Purchases: ${report.summary.totalPurchases}`);
+          addText(
+            `Number of Consumption Transactions: ${report.summary.totalConsumption}`
+          );
+          addText(
+            `Current Balance: ${formatCurrency(report.summary.currentBalance)}`
+          );
+          currentY += 10;
 
           // Custom parameters
           if (report.parameters && Object.keys(report.parameters).length > 0) {
-            addSectionHeader("Filter Parameters")
+            addSectionHeader("Filter Parameters");
             Object.entries(report.parameters).forEach(([key, value]) => {
-              addText(`${key}: ${value}`)
-            })
+              addText(`${key}: ${value}`);
+            });
           }
 
           // Add filtered transaction summary if there are parameters
           if (Object.keys(report.parameters || {}).length > 0) {
-            currentY += 5
-            addText(`Filtered Transactions Count: ${report.details.transactions.length}`, 11, "bold")
+            currentY += 5;
+            addText(
+              `Filtered Transactions Count: ${report.details.transactions.length}`,
+              11,
+              "bold"
+            );
 
             // Add transaction type distribution if available
-            if (report.details.purchases.length > 0 || report.details.consumption.length > 0) {
-              addText(`Purchase Transactions: ${report.details.purchases.length}`)
-              addText(`Consumption Transactions: ${report.details.consumption.length}`)
+            if (
+              report.details.purchases.length > 0 ||
+              report.details.consumption.length > 0
+            ) {
+              addText(
+                `Purchase Transactions: ${report.details.purchases.length}`
+              );
+              addText(
+                `Consumption Transactions: ${report.details.consumption.length}`
+              );
             }
           }
-          break
+          break;
       }
 
       // Add timestamp - Common for all report types
-      currentY += 10 // Extra space before timestamp
-      addText(`Generated: ${format(new Date(report.generated), "PPP p")}`, 10, "normal")
+      currentY += 10; // Extra space before timestamp
+      addText(
+        `Generated: ${format(new Date(report.generated), "PPP p")}`,
+        10,
+        "normal"
+      );
 
       // Generate filename based on report type
-      const timestamp = Date.now()
-      const filename = `user_${report.user.id}_credit_${type}_report_${timestamp}.pdf`
+      const timestamp = Date.now();
+      const filename = `user_${report.user.id}_credit_${type}_report_${timestamp}.pdf`;
 
       // Save PDF
-      doc.save(filename)
+      doc.save(filename);
 
-      return filename
+      return filename;
     } catch (err) {
-      console.error("PDF Generation Error:", err)
-      throw new Error("Failed to generate PDF document")
+      console.error("PDF Generation Error:", err);
+      throw new Error("Failed to generate PDF document");
     }
-  }
+  };
 
   const handleGenerateReport = async () => {
     if (!userId) {
-      setError("User ID is required")
-      return
+      setError("User ID is required");
+      return;
     }
 
-    setIsLoading(true)
-    setError(null)
-    setReport(null) // Reset report state
+    setIsLoading(true);
+    setError(null);
+    setReport(null); // Reset report state
 
     try {
       // Generate report with date range
-      const generatedReport = await generateReport(userId, dateRange.from, dateRange.to)
+      const generatedReport = await generateReport(
+        userId,
+        dateRange.from,
+        dateRange.to
+      );
 
-      console.log("Setting report state:", generatedReport)
+      console.log("Setting report state:", generatedReport);
 
       // Ensure we have a valid report before setting state
       if (generatedReport && generatedReport.user) {
-        setReport(generatedReport)
+        setReport(generatedReport);
       } else {
-        setError("No data found for the specified user and date range")
+        setError("No data found for the specified user and date range");
       }
     } catch (err) {
-      console.error("Error generating report:", err)
-      setError(err instanceof Error ? err.message : "Failed to generate report")
+      console.error("Error generating report:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to generate report"
+      );
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleDownloadPdf = (type: ReportType) => {
     if (report) {
       try {
-        const filename = generatePdfReport(report, type)
-        return filename
+        const filename = generatePdfReport(report, type);
+        return filename;
       } catch (error) {
-        console.error("Error generating PDF:", error)
-        setError("Failed to generate PDF report")
+        console.error("Error generating PDF:", error);
+        setError("Failed to generate PDF report");
       }
     }
-  }
+  };
 
   const handleParameterChange = (key: string, value: string) => {
     setParameters((prev) => ({
       ...prev,
       [key]: value,
-    }))
-  }
+    }));
+  };
 
   const handleRemoveParameter = (key: string) => {
     setParameters((prev) => {
-      const newParams = { ...prev }
-      delete newParams[key]
-      return newParams
-    })
-  }
+      const newParams = { ...prev };
+      delete newParams[key];
+      return newParams;
+    });
+  };
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
-      <h1 className="text-3xl font-bold mb-6 text-primary">User Report Generator</h1>
+      <h1 className="text-3xl font-bold mb-6 text-primary">
+        User Report Generator
+      </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-1">
@@ -438,18 +548,11 @@ export default function UserReportsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="userId">User ID</Label>
-              <Input
-                id="userId"
-                placeholder="Enter User ID"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
               <Label>Report Type</Label>
-              <Select value={reportType} onValueChange={(value) => setReportType(value as ReportType)}>
+              <Select
+                value={reportType}
+                onValueChange={(value) => setReportType(value as ReportType)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select report type" />
                 </SelectTrigger>
@@ -470,17 +573,24 @@ export default function UserReportsPage() {
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className={cn("justify-start text-left font-normal", !dateRange.from && "text-muted-foreground")}
+                      className={cn(
+                        "justify-start text-left font-normal",
+                        !dateRange.from && "text-muted-foreground"
+                      )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange.from ? format(dateRange.from, "PPP") : "Start date"}
+                      {dateRange.from
+                        ? format(dateRange.from, "PPP")
+                        : "Start date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
                     <Calendar
                       mode="single"
                       selected={dateRange.from}
-                      onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))}
+                      onSelect={(date) =>
+                        setDateRange((prev) => ({ ...prev, from: date }))
+                      }
                       initialFocus
                     />
                   </PopoverContent>
@@ -490,7 +600,10 @@ export default function UserReportsPage() {
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className={cn("justify-start text-left font-normal", !dateRange.to && "text-muted-foreground")}
+                      className={cn(
+                        "justify-start text-left font-normal",
+                        !dateRange.to && "text-muted-foreground"
+                      )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {dateRange.to ? format(dateRange.to, "PPP") : "End date"}
@@ -500,7 +613,9 @@ export default function UserReportsPage() {
                     <Calendar
                       mode="single"
                       selected={dateRange.to}
-                      onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))}
+                      onSelect={(date) =>
+                        setDateRange((prev) => ({ ...prev, to: date }))
+                      }
                       initialFocus
                     />
                   </PopoverContent>
@@ -517,7 +632,11 @@ export default function UserReportsPage() {
             )}
           </CardContent>
           <CardFooter>
-            <Button className="w-full" onClick={handleGenerateReport} disabled={isLoading}>
+            <Button
+              className="w-full"
+              onClick={handleGenerateReport}
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -534,7 +653,11 @@ export default function UserReportsPage() {
         </Card>
 
         <div className="lg:col-span-2">
-          {error && <div className="bg-destructive/10 text-destructive p-4 rounded-md mb-4">{error}</div>}
+          {error && (
+            <div className="bg-destructive/10 text-destructive p-4 rounded-md mb-4">
+              {error}
+            </div>
+          )}
 
           {isLoading ? (
             <ReportSkeleton />
@@ -545,18 +668,29 @@ export default function UserReportsPage() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle>Report Results</CardTitle>
-                  <CardDescription>Generated on {format(new Date(report.generated), "PPP p")}</CardDescription>
+                  <CardDescription>
+                    Generated on {format(new Date(report.generated), "PPP p")}
+                  </CardDescription>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => handleDownloadPdf(ReportType.SUMMARY)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDownloadPdf(ReportType.SUMMARY)}
+                  >
                     <FileDown className="mr-2 h-4 w-4" />
                     Summary PDF
                   </Button>
-                  <Button variant="outline" onClick={() => handleDownloadPdf(ReportType.DETAILED)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDownloadPdf(ReportType.DETAILED)}
+                  >
                     <FileDown className="mr-2 h-4 w-4" />
                     Detailed PDF
                   </Button>
-                  <Button variant="outline" onClick={() => handleDownloadPdf(ReportType.PARAMETRIC)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDownloadPdf(ReportType.PARAMETRIC)}
+                  >
                     <FileDown className="mr-2 h-4 w-4" />
                     Parametric PDF
                   </Button>
@@ -585,42 +719,65 @@ export default function UserReportsPage() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Card>
                               <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium">User Information</CardTitle>
+                                <CardTitle className="text-sm font-medium">
+                                  User Information
+                                </CardTitle>
                               </CardHeader>
                               <CardContent>
-                                <dl className="space-y-2">
+                                <div className="space-y-2">
                                   <div className="flex justify-between">
-                                    <dt className="text-sm font-medium text-muted-foreground">Name:</dt>
-                                    <dd className="text-sm">{report.user.name}</dd>
+                                    <div className="text-sm font-medium text-muted-foreground">
+                                      Name:
+                                    </div>
+                                    <div className="text-sm">
+                                      {report.user.name}
+                                    </div>
                                   </div>
                                   <div className="flex justify-between">
-                                    <dt className="text-sm font-medium text-muted-foreground">Email:</dt>
-                                    <dd className="text-sm">{report.user.email}</dd>
+                                    <div className="text-sm font-medium text-muted-foreground">
+                                      Email:
+                                    </div>
+                                    <div className="text-sm">
+                                      {report.user.email}
+                                    </div>
                                   </div>
                                   <div className="flex justify-between">
-                                    <dt className="text-sm font-medium text-muted-foreground">User ID:</dt>
-                                    <dd className="text-sm">{report.user.id}</dd>
+                                    <div className="text-sm font-medium text-muted-foreground">
+                                      User ID:
+                                    </div>
+                                    <p className="text-sm">{report.user.id}</p>
                                   </div>
-                                </dl>
+                                </div>
                               </CardContent>
                             </Card>
 
                             <Card>
                               <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium">Custom Parameters</CardTitle>
+                                <CardTitle className="text-sm font-medium">
+                                  Custom Parameters
+                                </CardTitle>
                               </CardHeader>
                               <CardContent>
                                 {Object.keys(parameters).length > 0 ? (
                                   <dl className="space-y-2">
-                                    {Object.entries(parameters).map(([key, value]) => (
-                                      <div key={key} className="flex justify-between">
-                                        <dt className="text-sm font-medium text-muted-foreground">{key}:</dt>
-                                        <dd className="text-sm">{value}</dd>
-                                      </div>
-                                    ))}
+                                    {Object.entries(parameters).map(
+                                      ([key, value]) => (
+                                        <div
+                                          key={key}
+                                          className="flex justify-between"
+                                        >
+                                          <dt className="text-sm font-medium text-muted-foreground">
+                                            {key}:
+                                          </dt>
+                                          <dd className="text-sm">{value}</dd>
+                                        </div>
+                                      )
+                                    )}
                                   </dl>
                                 ) : (
-                                  <p className="text-sm text-muted-foreground">No custom parameters defined.</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    No custom parameters defined.
+                                  </p>
                                 )}
                               </CardContent>
                             </Card>
@@ -628,31 +785,53 @@ export default function UserReportsPage() {
 
                           <Card>
                             <CardHeader className="pb-2">
-                              <CardTitle className="text-sm font-medium">Resource Summary</CardTitle>
+                              <CardTitle className="text-sm font-medium">
+                                Resource Summary
+                              </CardTitle>
                             </CardHeader>
                             <CardContent>
-                              <dl className="space-y-2">
+                              <div className="space-y-2">
                                 <div className="flex justify-between">
-                                  <dt className="text-sm font-medium text-muted-foreground">Total Units:</dt>
-                                  <dd className="text-sm">{report.summary.totalUnits}</dd>
+                                  <p className="text-sm font-medium text-muted-foreground">
+                                    Total Units:
+                                  </p>
+                                  <p className="text-sm">
+                                    {report.summary.totalUnits}
+                                  </p>
                                 </div>
                                 <div className="flex justify-between">
-                                  <dt className="text-sm font-medium text-muted-foreground">Total Clusters:</dt>
-                                  <dd className="text-sm">{report.summary.totalClusters}</dd>
+                                  <p className="text-sm font-medium text-muted-foreground">
+                                    Total Clusters:
+                                  </p>
+                                  <p className="text-sm">
+                                    {report.summary.totalClusters}
+                                  </p>
                                 </div>
                                 <div className="flex justify-between">
-                                  <dt className="text-sm font-medium text-muted-foreground">Total Files:</dt>
-                                  <dd className="text-sm">{report.summary.totalFiles}</dd>
+                                  <p className="text-sm font-medium text-muted-foreground">
+                                    Total Files:
+                                  </p>
+                                  <p className="text-sm">
+                                    {report.summary.totalFiles}
+                                  </p>
                                 </div>
                                 <div className="flex justify-between">
-                                  <dt className="text-sm font-medium text-muted-foreground">Total Notebooks:</dt>
-                                  <dd className="text-sm">{report.summary.totalNotebooks}</dd>
+                                  <p className="text-sm font-medium text-muted-foreground">
+                                    Total Notebooks:
+                                  </p>
+                                  <p className="text-sm">
+                                    {report.summary.totalNotebooks}
+                                  </p>
                                 </div>
                                 <div className="flex justify-between">
-                                  <dt className="text-sm font-medium text-muted-foreground">Total Embeddings:</dt>
-                                  <dd className="text-sm">{report.summary.totalEmbeddings}</dd>
+                                  <p className="text-sm font-medium text-muted-foreground">
+                                    Total Embeddings:
+                                  </p>
+                                  <p className="text-sm">
+                                    {report.summary.totalEmbeddings}
+                                  </p>
                                 </div>
-                              </dl>
+                              </div>
                             </CardContent>
                           </Card>
                         </div>
@@ -668,6 +847,5 @@ export default function UserReportsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
-

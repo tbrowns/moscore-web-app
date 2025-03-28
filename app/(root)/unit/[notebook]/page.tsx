@@ -1,14 +1,13 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Book, Plus, Save } from "lucide-react";
-
-import { Editor } from "novel";
-import { Editor as TipTapEditor } from "@tiptap/core";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 import { supabase } from "@/lib/supabase";
+import { Sidebar } from "./NotebookSideBar";
 
-import { Sidebar } from "@/app/(root)/unit/[notebook]/NotebookSideBar";
-import { ChatSideBar } from "@/app/(root)/unit/[notebook]/ChatSideBar";
+import { ChatSideBar } from "@/components/shared/ChatSideBar";
 
 interface Notebook {
   id: string;
@@ -17,10 +16,10 @@ interface Notebook {
   lastModified: Date;
 }
 
-export default function App() {
+export default function NotebookApp() {
   const params = useParams();
-
   const page = params.notebook as string;
+
   const [notebooks, setNotebooks] = useState<Notebook[]>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(`notebooks-${page}`);
@@ -35,7 +34,8 @@ export default function App() {
       {
         id: "default",
         name: "Welcome Note",
-        content: "Welcome to your Notebook!Start writing your thoughts here...",
+        content:
+          "<p>Welcome to your Notebook! Start writing your thoughts here...</p>",
         lastModified: new Date(),
       },
     ];
@@ -45,42 +45,47 @@ export default function App() {
     notebooks[0].id
   );
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [editorKey, setEditorKey] = useState(0); // Add this to force editor remount
 
   const currentNotebook =
     notebooks.find((n) => n.id === currentNotebookId) || notebooks[0];
 
+  // Initialize TipTap editor
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: currentNotebook.content,
+    onUpdate: ({ editor }) => {
+      const newContent = editor.getHTML();
+
+      // Only update if content has actually changed
+      if (newContent !== currentNotebook.content) {
+        setNotebooks((prev) =>
+          prev.map((notebook) =>
+            notebook.id === currentNotebookId
+              ? { ...notebook, content: newContent, lastModified: new Date() }
+              : notebook
+          )
+        );
+      }
+    },
+  });
+
+  // Save notebooks to localStorage when they change
   useEffect(() => {
     localStorage.setItem(`notebooks-${page}`, JSON.stringify(notebooks));
-  }, [notebooks]);
+  }, [notebooks, page]);
 
-  // Force editor remount when notebook changes
+  // Update editor content when switching notebooks
   useEffect(() => {
-    setEditorKey((prev) => prev + 1);
-  }, [currentNotebookId]);
-
-  const handleContentChange = (editor?: TipTapEditor) => {
-    if (!editor) return;
-
-    const newContent = editor.getHTML();
-
-    // Only update if content has actually changed
-    if (newContent !== currentNotebook.content) {
-      setNotebooks((prev) =>
-        prev.map((notebook) =>
-          notebook.id === currentNotebookId
-            ? { ...notebook, content: newContent, lastModified: new Date() }
-            : notebook
-        )
-      );
+    if (editor && currentNotebook) {
+      editor.commands.setContent(currentNotebook.content);
     }
-  };
+  }, [currentNotebookId, editor, currentNotebook]);
 
   const handleAddNotebook = () => {
     const newNotebook: Notebook = {
       id: `notebook-${Date.now()}`,
       name: `New Notebook ${notebooks.length + 1}`,
-      content: "",
+      content: "<p></p>",
       lastModified: new Date(),
     };
     setNotebooks([...notebooks, newNotebook]);
@@ -107,47 +112,34 @@ export default function App() {
 
   const handleSave = async () => {
     const saveTime = new Date().toLocaleTimeString();
-    const { error } = await supabase.from("notebooks").insert({
-      id: currentNotebookId,
-      name: currentNotebook.name,
-      content: currentNotebook.content,
-      unit_id: params.notebook,
-      lastModified: currentNotebook.lastModified,
-    });
-
-    if (error) {
-      console.error(error);
-      return;
-    }
-    const notification = document.createElement("div");
-    notification.className =
-      "fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg transform transition-transform duration-500 ease-in-out";
-    notification.textContent = `✓ Saved at ${saveTime}`;
-    document.body.appendChild(notification);
-    setTimeout(() => {
-      notification.style.transform = "translateY(100%)";
-      setTimeout(() => document.body.removeChild(notification), 500);
-    }, 2000);
-  };
-
-  const getInitialContent = (content: string) => {
-    if (!content) return undefined;
 
     try {
-      // First try to parse it as JSON in case it's already in the correct format
-      const parsed = JSON.parse(content);
-      return parsed;
-    } catch {
-      // If it's plain text, convert it to the proper format
-      return {
-        type: "doc",
-        content: [
-          {
-            type: "paragraph",
-            content: [{ type: "text", text: content }],
-          },
-        ],
-      };
+      const { error } = await supabase.from("notebooks").upsert({
+        id: currentNotebookId,
+        name: currentNotebook.name,
+        content: currentNotebook.content,
+        unit_id: params.notebook,
+        last_modified: new Date().toISOString(),
+      });
+
+      if (error) {
+        console.error("Error saving notebook:", error);
+        return;
+      }
+
+      // Show success notification
+      const notification = document.createElement("div");
+      notification.className =
+        "fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg transform transition-transform duration-500 ease-in-out";
+      notification.textContent = `✓ Saved at ${saveTime}`;
+      document.body.appendChild(notification);
+
+      setTimeout(() => {
+        notification.style.transform = "translateY(100%)";
+        setTimeout(() => document.body.removeChild(notification), 500);
+      }, 2000);
+    } catch (error) {
+      console.error("Error saving notebook:", error);
     }
   };
 
@@ -203,14 +195,10 @@ export default function App() {
           </div>
 
           <div className="flex-1 overflow-hidden bg-white">
-            <div className="h-full overflow-y-auto">
-              <Editor
-                key={editorKey}
-                defaultValue={getInitialContent(currentNotebook.content)}
-                onUpdate={(editor?: TipTapEditor) => {
-                  if (editor) handleContentChange(editor);
-                }}
-                storageKey={currentNotebookId}
+            <div className="h-full overflow-y-auto p-4">
+              <EditorContent
+                editor={editor}
+                className="min-h-screen w-full max-w-screen-lg mx-auto bg-white"
               />
             </div>
           </div>

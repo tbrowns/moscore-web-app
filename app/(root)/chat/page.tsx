@@ -58,10 +58,6 @@ export default function ChatPage() {
     console.log(clusterId);
   }, [clusterId]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   const modifyInput = (inputValue: string) => {
     if (inputRef.current) {
       inputRef.current.value = inputValue;

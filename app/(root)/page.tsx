@@ -1,4 +1,4 @@
-"usse server";
+"use server";
 import { currentUser } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabase";
 import WorkspacePage from "@/components/shared/WorkspacePage";

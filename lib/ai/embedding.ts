@@ -68,7 +68,7 @@ export const findRelevantContent = async (
 
   const topN = rankedResults.slice(0, N);
 
-  const RAGContent = topN.map((item) => item.name).join("\n\n");
+  const RAGContent: string = topN.map((item) => item.name).join("\n\n");
 
   return RAGContent;
 };

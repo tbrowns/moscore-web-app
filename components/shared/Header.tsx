@@ -1,10 +1,10 @@
 import React from "react";
+import Link from "next/link";
 import Image from "next/image";
 
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { AlignLeft } from "lucide-react";
 
-import UserReportButton from "@/components/shared/UserReportButton";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -16,8 +16,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-
-import { ClerkProvider } from "@clerk/nextjs";
 
 const Header = () => {
   return (
@@ -31,10 +29,12 @@ const Header = () => {
         width={150}
         height={150}
       />
-      <ClerkProvider dynamic>
-        {" "}
-        <UserReportButton />
-      </ClerkProvider>
+
+      <div className="gap-4 text-sm font-medium text-muted-foreground md:flex hidden">
+        <Link href="/"> home</Link>
+        <Link href="/chat"> chatbot</Link>
+        <Link href="/credits"> purchases</Link>
+      </div>
 
       <UserButton />
     </header>

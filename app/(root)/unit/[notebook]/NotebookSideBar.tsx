@@ -1,19 +1,22 @@
-import React, { useState } from "react";
-import { Pencil, Trash2, MoreVertical } from "lucide-react";
+"use client"
+
+import type React from "react"
+import { useState } from "react"
+import { Edit2, Trash2 } from "lucide-react"
 
 interface Notebook {
-  id: string;
-  name: string;
-  content: string;
-  lastModified: Date;
+  id: string
+  name: string
+  content: string
+  lastModified: Date
 }
 
 interface SidebarProps {
-  notebooks: Notebook[];
-  currentNotebookId: string;
-  onSelectNotebook: (id: string) => void;
-  onRenameNotebook: (id: string, newName: string) => void;
-  onDeleteNotebook: (id: string) => void;
+  notebooks: Notebook[]
+  currentNotebookId: string
+  onSelectNotebook: (id: string) => void
+  onRenameNotebook: (id: string, newName: string) => void
+  onDeleteNotebook: (id: string) => void
 }
 
 export function Sidebar({
@@ -23,105 +26,77 @@ export function Sidebar({
   onRenameNotebook,
   onDeleteNotebook,
 }: SidebarProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState<string>("")
 
-  const handleRenameClick = (id: string) => {
-    setEditingId(id);
-    setMenuOpenId(null);
-  };
+  const handleStartRename = (id: string, currentName: string) => {
+    setEditingId(id)
+    setEditingName(currentName)
+  }
 
-  const handleRenameSubmit = (id: string, newName: string) => {
-    onRenameNotebook(id, newName);
-    setEditingId(null);
-  };
-
-  const handleDeleteClick = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this notebook?")) {
-      onDeleteNotebook(id);
+  const handleFinishRename = () => {
+    if (editingId && editingName.trim()) {
+      onRenameNotebook(editingId, editingName)
     }
-    setMenuOpenId(null);
-  };
+    setEditingId(null)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleFinishRename()
+    } else if (e.key === "Escape") {
+      setEditingId(null)
+    }
+  }
 
   return (
-    <div className="h-full bg-gray-900 text-gray-300 p-4">
-      <h2 className="text-lg font-semibold mb-4 text-white">Notebooks</h2>
-      <div className="space-y-1">
+    <div className="h-full bg-white border-r overflow-y-auto p-4">
+      <h2 className="text-lg font-semibold mb-4 text-gray-800">Your Notebooks</h2>
+      <ul className="space-y-1">
         {notebooks.map((notebook) => (
-          <div
+          <li
             key={notebook.id}
-            className={`relative group rounded-lg ${
-              currentNotebookId === notebook.id
-                ? "bg-gray-700 text-white"
-                : "hover:bg-gray-800"
+            className={`rounded-lg ${
+              notebook.id === currentNotebookId ? "bg-indigo-50 text-indigo-700" : "hover:bg-gray-100"
             }`}
           >
-            <div className="flex items-center p-2">
+            <div className="flex items-center justify-between p-2">
               {editingId === notebook.id ? (
                 <input
                   type="text"
-                  defaultValue={notebook.name}
-                  className="flex-1 bg-gray-800 text-white px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  onBlur={(e) =>
-                    handleRenameSubmit(notebook.id, e.target.value)
-                  }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleRenameSubmit(notebook.id, e.currentTarget.value);
-                    }
-                  }}
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onBlur={handleFinishRename}
+                  onKeyDown={handleKeyDown}
                   autoFocus
+                  className="flex-1 p-1 border rounded"
                 />
               ) : (
-                <>
-                  <button
-                    className="flex-1 text-left truncate"
-                    onClick={() => onSelectNotebook(notebook.id)}
-                  >
-                    {notebook.name}
-                  </button>
-                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => setMenuOpenId(notebook.id)}
-                      className="p-1 hover:bg-gray-700 rounded"
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
-                  </div>
-                </>
+                <button onClick={() => onSelectNotebook(notebook.id)} className="flex-1 text-left truncate py-1">
+                  {notebook.name}
+                </button>
               )}
-            </div>
-
-            {/* Dropdown Menu */}
-            {menuOpenId === notebook.id && (
-              <div className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
-                <div className="py-1">
-                  <button
-                    onClick={() => handleRenameClick(notebook.id)}
-                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    <Pencil className="w-4 h-4 mr-2" />
-                    Rename
-                  </button>
-                  <button
-                    onClick={() => handleDeleteClick(notebook.id)}
-                    className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
-                  </button>
-                </div>
+              <div className="flex space-x-1">
+                <button
+                  onClick={() => handleStartRename(notebook.id, notebook.name)}
+                  className="p-1 text-gray-500 hover:text-indigo-600 rounded"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onDeleteNotebook(notebook.id)}
+                  className="p-1 text-gray-500 hover:text-red-600 rounded"
+                  disabled={notebooks.length <= 1}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+            <div className="px-2 pb-1 text-xs text-gray-500">{notebook.lastModified.toLocaleString()}</div>
+          </li>
         ))}
-      </div>
-
-      <div className="absolute bottom-4 left-4 right-4">
-        <div className="text-xs text-gray-500">
-          Last modified: {new Date().toLocaleDateString()}
-        </div>
-      </div>
+      </ul>
     </div>
-  );
+  )
 }
+

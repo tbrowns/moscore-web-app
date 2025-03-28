@@ -30,7 +30,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       <Header />
       <div className="flex">
         {/* Set loading to true when the users clicks on a new page */}
-        <Sidebar setIsLoading={setIsLoading} />
+        {/* <Sidebar setIsLoading={setIsLoading} /> */}
         <div className="w-full overflow-x-auto">
           <div className="sm:h-[calc(99vh-60px)] overflow-auto">
             <div className="w-full flex justify-center mx-auto overflow-auto h-[calc(100vh-120px)]">
