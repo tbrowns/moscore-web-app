@@ -1,28 +1,51 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { format } from "date-fns"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { CreditCard, TrendingDown, TrendingUp, ClockIcon, BarChart } from "lucide-react"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { format } from "date-fns";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import {
+  CreditCard,
+  TrendingDown,
+  TrendingUp,
+  ClockIcon,
+  BarChart,
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { useState } from "react";
 
 interface ReportDetailsProps {
-  report: any
+  report: any;
 }
 
 export function ReportDetails({ report }: ReportDetailsProps) {
-  const [timeframe, setTimeframe] = useState<"daily" | "monthly">("daily")
+  const [timeframe, setTimeframe] = useState<"daily" | "monthly">("daily");
 
   // Validate report data
   if (!report || !report.details) {
     return (
       <div className="p-8 text-center">
-        <p className="text-muted-foreground">No detailed report data available</p>
+        <p className="text-muted-foreground">
+          No detailed report data available
+        </p>
       </div>
-    )
+    );
   }
 
   // Add console log to debug
@@ -30,66 +53,73 @@ export function ReportDetails({ report }: ReportDetailsProps) {
     transactions: report.details.transactions.length,
     purchases: report.details.purchases.length,
     consumption: report.details.consumption.length,
-  })
+  });
 
   // Helper function to safely format dates
-  const formatDateSafe = (dateString: string | undefined | null, formatStr = "PPP") => {
-    if (!dateString) return "N/A"
+  const formatDateSafe = (
+    dateString: string | undefined | null,
+    formatStr = "PPP"
+  ) => {
+    if (!dateString) return "N/A";
     try {
-      return format(new Date(dateString), formatStr)
+      return format(new Date(dateString), formatStr);
     } catch (e) {
-      return "Invalid date"
+      return "Invalid date";
     }
-  }
+  };
 
   // Format currency
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount)
-  }
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
+  };
 
   // Prepare time series data for the transactions chart
   const prepareTimeSeriesData = () => {
-    if (!report.details.transactions.length) return []
+    if (!report.details.transactions.length) return [];
 
     const sorted = [...report.details.transactions].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-    )
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
 
-    const timeFormat = timeframe === "daily" ? "yyyy-MM-dd" : "yyyy-MM"
+    const timeFormat = timeframe === "daily" ? "yyyy-MM-dd" : "yyyy-MM";
 
     // Group by time period
     const groupedData = sorted.reduce((acc, transaction) => {
-      const date = formatDateSafe(transaction.created_at, timeFormat)
+      const date = formatDateSafe(transaction.created_at, timeFormat);
       if (!acc[date]) {
         acc[date] = {
           date,
           purchases: 0,
           consumption: 0,
           balance: 0,
-        }
+        };
       }
 
       if (transaction.type === "purchase") {
-        acc[date].purchases += transaction.amount
+        acc[date].purchases += transaction.amount;
       } else if (transaction.type === "consumption") {
-        acc[date].consumption += transaction.amount
+        acc[date].consumption += transaction.amount;
       }
 
-      return acc
-    }, {})
+      return acc;
+    }, {});
 
     // Convert to array and calculate running balance
-    let runningBalance = 0
+    let runningBalance = 0;
     return Object.values(groupedData).map((day: any) => {
-      runningBalance += day.purchases - day.consumption
+      runningBalance += day.purchases - day.consumption;
       return {
         ...day,
         balance: runningBalance,
-      }
-    })
-  }
+      };
+    });
+  };
 
-  const timeSeriesData = prepareTimeSeriesData()
+  const timeSeriesData = prepareTimeSeriesData();
 
   return (
     <div className="space-y-6">
@@ -122,19 +152,41 @@ export function ReportDetails({ report }: ReportDetailsProps) {
           <div className="h-[300px]">
             {timeSeriesData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={timeSeriesData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <LineChart
+                  data={timeSeriesData}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Line type="monotone" dataKey="balance" stroke="#8884d8" name="Balance" />
-                  <Line type="monotone" dataKey="purchases" stroke="#82ca9d" name="Purchases" />
-                  <Line type="monotone" dataKey="consumption" stroke="#ff7300" name="Consumption" />
+                  <Tooltip
+                    formatter={(value) => formatCurrency(Number(value))}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="balance"
+                    stroke="#8884d8"
+                    name="Balance"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="purchases"
+                    stroke="#82ca9d"
+                    name="Purchases"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="consumption"
+                    stroke="#ff7300"
+                    name="Consumption"
+                  />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex h-full w-full items-center justify-center">
-                <p className="text-muted-foreground">No transaction data available for chart</p>
+                <p className="text-muted-foreground">
+                  No transaction data available for chart
+                </p>
               </div>
             )}
           </div>
@@ -157,7 +209,8 @@ export function ReportDetails({ report }: ReportDetailsProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {Array.isArray(report.details.transactions) && report.details.transactions.length > 0 ? (
+              {Array.isArray(report.details.transactions) &&
+              report.details.transactions.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -171,20 +224,31 @@ export function ReportDetails({ report }: ReportDetailsProps) {
                     {report.details.transactions.map((transaction: any) => (
                       <TableRow key={transaction.id}>
                         <TableCell>
-                          <Badge variant={transaction.type === "purchase" ? "success" : "destructive"}>
+                          <Badge
+                            variant={
+                              transaction.type === "purchase"
+                                ? "default"
+                                : "destructive"
+                            }
+                          >
                             {transaction.type === "purchase" ? (
                               <>
                                 <TrendingUp className="h-3 w-3 mr-1" /> Purchase
                               </>
                             ) : (
                               <>
-                                <TrendingDown className="h-3 w-3 mr-1" /> Consumption
+                                <TrendingDown className="h-3 w-3 mr-1" />{" "}
+                                Consumption
                               </>
                             )}
                           </Badge>
                         </TableCell>
-                        <TableCell className="font-medium">{formatCurrency(transaction.amount)}</TableCell>
-                        <TableCell>{transaction.description || "N/A"}</TableCell>
+                        <TableCell className="font-medium">
+                          {formatCurrency(transaction.amount)}
+                        </TableCell>
+                        <TableCell>
+                          {transaction.description || "N/A"}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center">
                             <ClockIcon className="h-3 w-3 mr-1 text-muted-foreground" />
@@ -213,7 +277,8 @@ export function ReportDetails({ report }: ReportDetailsProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {Array.isArray(report.details.purchases) && report.details.purchases.length > 0 ? (
+              {Array.isArray(report.details.purchases) &&
+              report.details.purchases.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -225,8 +290,12 @@ export function ReportDetails({ report }: ReportDetailsProps) {
                   <TableBody>
                     {report.details.purchases.map((transaction: any) => (
                       <TableRow key={transaction.id}>
-                        <TableCell className="font-medium">{formatCurrency(transaction.amount)}</TableCell>
-                        <TableCell>{transaction.description || "N/A"}</TableCell>
+                        <TableCell className="font-medium">
+                          {formatCurrency(transaction.amount)}
+                        </TableCell>
+                        <TableCell>
+                          {transaction.description || "N/A"}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center">
                             <ClockIcon className="h-3 w-3 mr-1 text-muted-foreground" />
@@ -255,7 +324,8 @@ export function ReportDetails({ report }: ReportDetailsProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {Array.isArray(report.details.consumption) && report.details.consumption.length > 0 ? (
+              {Array.isArray(report.details.consumption) &&
+              report.details.consumption.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -267,8 +337,12 @@ export function ReportDetails({ report }: ReportDetailsProps) {
                   <TableBody>
                     {report.details.consumption.map((transaction: any) => (
                       <TableRow key={transaction.id}>
-                        <TableCell className="font-medium">{formatCurrency(transaction.amount)}</TableCell>
-                        <TableCell>{transaction.description || "N/A"}</TableCell>
+                        <TableCell className="font-medium">
+                          {formatCurrency(transaction.amount)}
+                        </TableCell>
+                        <TableCell>
+                          {transaction.description || "N/A"}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center">
                             <ClockIcon className="h-3 w-3 mr-1 text-muted-foreground" />
@@ -289,6 +363,5 @@ export function ReportDetails({ report }: ReportDetailsProps) {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
-
