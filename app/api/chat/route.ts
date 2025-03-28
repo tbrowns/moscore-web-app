@@ -18,9 +18,9 @@ export async function POST(req: Request) {
 
   try {
     // Get relevant content using the embedding system
-    let contextContent: string = "";
+    let contextContent = "";
     if (clusterId) {
-      contextContent = await findRelevantContent(userQuery, clusterId);
+      contextContent = (await findRelevantContent(userQuery, clusterId)) || "";
       console.log("Found relevant content:", contextContent ? "Yes" : "No");
     }
 

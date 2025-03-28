@@ -42,10 +42,10 @@ export const generateEmbedding = async (value: string): Promise<number[]> => {
 export const findRelevantContent = async (
   userQuery: string,
   clusterId: string
-) => {
+): Promise<string> => {
   // Generate the embedding for the user query
   const userQueryEmbedded = await generateEmbedding(userQuery);
-  if (clusterId === "none") return [];
+  if (clusterId === "none") return "";
 
   // Fetch embeddings and associated content from the Supabase database
   const { data, error } = await supabase
@@ -53,12 +53,11 @@ export const findRelevantContent = async (
     .select("text_chunk, embedding")
     .eq("cluster_id", clusterId);
 
-  if (error || !data || data.length === 0) return [];
+  if (error || !data || data.length === 0) return "";
 
   // Compute cosine similarity and rank results
   const rankedResults = data
     .map((item) => {
-      console.log(`${userQueryEmbedded.length} ${item.embedding.length}`);
       const similarity = cosineSimilarity(userQueryEmbedded, item.embedding);
       return { name: item.text_chunk, similarity };
     })
@@ -68,7 +67,8 @@ export const findRelevantContent = async (
 
   const topN = rankedResults.slice(0, N);
 
-  const RAGContent: string = topN.map((item) => item.name).join("\n\n");
+  // Join the top N results into a single string
+  const RAGContent = topN.map((item) => item.name).join("\n\n");
 
   return RAGContent;
 };
