@@ -26,6 +26,7 @@ export async function initiateMpesaPayment(
 
     // Store the checkout request in the database for tracking
     if (response.CheckoutRequestID) {
+
       const { error } = await supabase.from("mpesa_transactions").insert({
         checkout_request_id: response.CheckoutRequestID,
         merchant_request_id: response.MerchantRequestID,

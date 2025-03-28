@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
 import { supabase } from "@/lib/supabase";
 import { jsPDF } from "jspdf";
 import { Calendar } from "@/components/ui/calendar";
@@ -93,6 +94,13 @@ export default function UserReportsPage() {
   const [report, setReport] = useState<UserReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const { isLoaded, isSignedIn, user } = useUser();
+
+  useEffect(() => {
+    const id: string = user?.id || "";
+    setUserId(id);
+  }, [user]);
 
   // Replace the generateReport function with this credit-focused version
   const generateReport = async (
@@ -539,15 +547,6 @@ export default function UserReportsPage() {
             <CardDescription>Configure your report settings</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="userId">User ID</Label>
-              <Input
-                id="userId"
-                placeholder="Enter User ID"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-              />
-            </div>
 
             <div className="space-y-2">
               <Label>Report Type</Label>
