@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { jsPDF } from "jspdf";
 import { Calendar } from "@/components/ui/calendar";
@@ -35,7 +35,14 @@ import { ReportDetails } from "./components/report-details";
 import { ReportSkeleton } from "./components/report-skeleton";
 import { NoData } from "./components/no-data";
 import { ParametricOptions } from "./components/parametric-options";
-import { useUser } from "@clerk/nextjs";
+
+// Add this function at the top of your file or in a utility file
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount);
+};
 
 // Update the UserReport interface to focus on credit data instead of units/clusters
 interface UserReport {
@@ -86,13 +93,6 @@ export default function UserReportsPage() {
   const [report, setReport] = useState<UserReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  const { user } = useUser();
-
-  useEffect(() => {
-    const id: string = user?.id || "";
-    setUserId(id);
-  }, [user]);
 
   // Replace the generateReport function with this credit-focused version
   const generateReport = async (
@@ -276,14 +276,6 @@ export default function UserReportsPage() {
         } catch (e) {
           return "Invalid date";
         }
-      };
-
-      // Format currency
-      const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("en-US", {
-          style: "currency",
-          currency: "USD",
-        }).format(amount);
       };
 
       // Title - Different for each report type
@@ -548,6 +540,16 @@ export default function UserReportsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="userId">User ID</Label>
+              <Input
+                id="userId"
+                placeholder="Enter User ID"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label>Report Type</Label>
               <Select
                 value={reportType}
@@ -724,30 +726,32 @@ export default function UserReportsPage() {
                                 </CardTitle>
                               </CardHeader>
                               <CardContent>
-                                <div className="space-y-2">
+                                <dl className="space-y-2">
                                   <div className="flex justify-between">
-                                    <div className="text-sm font-medium text-muted-foreground">
+                                    <dt className="text-sm font-medium text-muted-foreground">
                                       Name:
-                                    </div>
-                                    <div className="text-sm">
+                                    </dt>
+                                    <dd className="text-sm">
                                       {report.user.name}
-                                    </div>
+                                    </dd>
                                   </div>
                                   <div className="flex justify-between">
-                                    <div className="text-sm font-medium text-muted-foreground">
+                                    <dt className="text-sm font-medium text-muted-foreground">
                                       Email:
-                                    </div>
-                                    <div className="text-sm">
+                                    </dt>
+                                    <dd className="text-sm">
                                       {report.user.email}
-                                    </div>
+                                    </dd>
                                   </div>
                                   <div className="flex justify-between">
-                                    <div className="text-sm font-medium text-muted-foreground">
+                                    <dt className="text-sm font-medium text-muted-foreground">
                                       User ID:
-                                    </div>
-                                    <p className="text-sm">{report.user.id}</p>
+                                    </dt>
+                                    <dd className="text-sm">
+                                      {report.user.id}
+                                    </dd>
                                   </div>
-                                </div>
+                                </dl>
                               </CardContent>
                             </Card>
 
@@ -786,52 +790,58 @@ export default function UserReportsPage() {
                           <Card>
                             <CardHeader className="pb-2">
                               <CardTitle className="text-sm font-medium">
-                                Resource Summary
+                                Credit Summary
                               </CardTitle>
                             </CardHeader>
                             <CardContent>
-                              <div className="space-y-2">
+                              <dl className="space-y-2">
                                 <div className="flex justify-between">
-                                  <p className="text-sm font-medium text-muted-foreground">
-                                    Total Units:
-                                  </p>
-                                  <p className="text-sm">
-                                    {report.summary.totalUnits}
-                                  </p>
+                                  <dt className="text-sm font-medium text-muted-foreground">
+                                    Total Credits Purchased:
+                                  </dt>
+                                  <dd className="text-sm">
+                                    {formatCurrency(
+                                      report.summary.totalCredits
+                                    )}
+                                  </dd>
                                 </div>
                                 <div className="flex justify-between">
-                                  <p className="text-sm font-medium text-muted-foreground">
-                                    Total Clusters:
-                                  </p>
-                                  <p className="text-sm">
-                                    {report.summary.totalClusters}
-                                  </p>
+                                  <dt className="text-sm font-medium text-muted-foreground">
+                                    Purchase Transactions:
+                                  </dt>
+                                  <dd className="text-sm">
+                                    {report.summary.totalPurchases}
+                                  </dd>
                                 </div>
                                 <div className="flex justify-between">
-                                  <p className="text-sm font-medium text-muted-foreground">
-                                    Total Files:
-                                  </p>
-                                  <p className="text-sm">
-                                    {report.summary.totalFiles}
-                                  </p>
+                                  <dt className="text-sm font-medium text-muted-foreground">
+                                    Consumption Transactions:
+                                  </dt>
+                                  <dd className="text-sm">
+                                    {report.summary.totalConsumption}
+                                  </dd>
                                 </div>
                                 <div className="flex justify-between">
-                                  <p className="text-sm font-medium text-muted-foreground">
-                                    Total Notebooks:
-                                  </p>
-                                  <p className="text-sm">
-                                    {report.summary.totalNotebooks}
-                                  </p>
+                                  <dt className="text-sm font-medium text-muted-foreground">
+                                    Average Transaction:
+                                  </dt>
+                                  <dd className="text-sm">
+                                    {formatCurrency(
+                                      report.summary.averageTransaction
+                                    )}
+                                  </dd>
                                 </div>
                                 <div className="flex justify-between">
-                                  <p className="text-sm font-medium text-muted-foreground">
-                                    Total Embeddings:
-                                  </p>
-                                  <p className="text-sm">
-                                    {report.summary.totalEmbeddings}
-                                  </p>
+                                  <dt className="text-sm font-medium text-muted-foreground">
+                                    Current Balance:
+                                  </dt>
+                                  <dd className="text-sm">
+                                    {formatCurrency(
+                                      report.summary.currentBalance
+                                    )}
+                                  </dd>
                                 </div>
-                              </div>
+                              </dl>
                             </CardContent>
                           </Card>
                         </div>
